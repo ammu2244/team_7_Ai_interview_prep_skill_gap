@@ -2,9 +2,9 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db import get_db
-from models import User, SkillAnalysis
+from models import User, SkillAnalysis, GeneratedProject, GeneratedRoadmap
 from utils.jwt_handler import get_current_user
-from utils.roadmap_generator import generate_roadmap
+from utils.roadmap_generator import generate_roadmap, generate_mini_projects
 
 router = APIRouter(prefix="/roadmap", tags=["AI Roadmap"])
 
@@ -30,10 +30,51 @@ def get_roadmap(
         )
 
     missing_skills = json.loads(analysis.missing_skills) if analysis.missing_skills else []
-    roadmap = generate_roadmap(missing_skills)
+
+    # Check if we already have a generated roadmap for this specific analysis session
+    existing_roadmap = db.query(GeneratedRoadmap).filter(GeneratedRoadmap.user_id == current_user.id).order_by(GeneratedRoadmap.id.desc()).first()
+    
+    if not existing_roadmap:
+        # Generate and save new unique roadmap
+        roadmap_data = generate_roadmap(missing_skills)
+        new_roadmap = GeneratedRoadmap(
+            user_id=current_user.id,
+            roadmap_data=json.dumps(roadmap_data)
+        )
+        db.add(new_roadmap)
+        
+        # Also generate and save unique mini projects
+        projects_data = generate_mini_projects(missing_skills)
+        for p in projects_data:
+            new_project = GeneratedProject(
+                user_id=current_user.id,
+                title=p["title"],
+                difficulty=p["difficulty"],
+                description=p["description"],
+                features=json.dumps(p["features"])
+            )
+            db.add(new_project)
+        
+        db.commit()
+    else:
+        roadmap_data = json.loads(existing_roadmap.roadmap_data)
+
+    # Fetch projects for this user
+    projects = db.query(GeneratedProject).filter(GeneratedProject.user_id == current_user.id).all()
+    projects_list = [
+        {
+            "id": p.id,
+            "title": p.title,
+            "difficulty": p.difficulty,
+            "description": p.description,
+            "features": json.loads(p.features)
+        }
+        for p in projects
+    ]
 
     return {
         "user_id": current_user.id,
         "match_percentage": analysis.match_percentage,
-        "roadmap": roadmap,
+        "roadmap": roadmap_data,
+        "mini_projects": projects_list,
     }

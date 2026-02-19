@@ -12,7 +12,7 @@ import os
 import json
 import google.generativeai as genai
 from dotenv import load_dotenv
-from typing import Dict, List
+from typing import Dict, List, Any
 
 load_dotenv()
 
@@ -181,12 +181,14 @@ def ai_generate_roadmap(missing_skills: List[str], total_weeks: int = 4) -> List
 
 TASK: Create a detailed {total_weeks}-week learning roadmap for a job candidate who needs to learn these skills: {skills_str}
 
+STRICT RULE: Every time you are asked, generate a UNIQUE and fresh roadmap. Do not repeat previous templates exactly.
 Requirements:
 - Distribute skills logically across {total_weeks} weeks (related skills close together)
 - For each week provide: a title, the skills to focus on, detailed study notes/action items, and real learning resources (URLs)
 - Resources should be real, well-known websites (official docs, freeCodeCamp, Coursera, YouTube channels, GeeksforGeeks, etc.)
 - Notes should include specific topics to cover, projects to build, and practice exercises
 - Order from foundational skills to advanced ones
+- Ensure the advice is tailored specifically to these skills.
 
 Return ONLY valid JSON in this exact format (no markdown, no explanation):
 [
@@ -220,6 +222,48 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
                 for s in missing_skills
             ],
         }]
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 3.1 AI PROJECT GENERATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def ai_generate_projects(missing_skills: List[str], count: int = 2) -> List[Dict]:
+    """
+    Use Gemini to create unique, hands-on mini projects for the given skills.
+    """
+    if not missing_skills:
+        return []
+
+    skills_str = ", ".join(missing_skills)
+    prompt = f"""You are a technical project mentor.
+    
+TASK: Generate {count} unique mini-project ideas that specifically help a candidate learn these skills: {skills_str}.
+
+STRICT RULES:
+- Each project must be UNIQUE and practical.
+- Provide a catchy title, difficulty level (Easy/Medium/Hard), a brief description, and 3-4 key technical features to implement.
+- Each project should be achievable in 3-7 days.
+- Tailor projects specifically to the combination of skills provided.
+
+Return ONLY valid JSON in this format (no markdown):
+[
+  {{
+    "title": "Project Title",
+    "difficulty": "Medium",
+    "description": "Short explanation of the project...",
+    "features": ["Feature 1", "Feature 2", "Feature 3"]
+  }}
+]
+"""
+    try:
+        result = _ask_gemini_json(prompt)
+        if isinstance(result, list):
+            return result[:count]
+        return []
+    except Exception as e:
+        print(f"[AI Agent] Project generation error: {e}")
+        return []
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -55,6 +55,8 @@ def get_dashboard(
         user_name=current_user.name,
         email=current_user.email,
         xp=current_user.xp,
+        level=current_user.level,
+        xp_to_next=current_user.xp_to_next,
         streak=current_user.streak,
         match_percentage=match_percentage,
         matched_skills=matched_skills,
@@ -62,4 +64,10 @@ def get_dashboard(
         total_progress_percentage=total_progress,
         completed_skills=completed_skills,
         recent_test_scores=recent_test_scores,
+        earned_badges=json.loads(current_user.earned_badges) if current_user.earned_badges else [],
+        daily_xp=json.loads(current_user.daily_xp) if current_user.daily_xp else {},
+        project_progress=[
+            {"project_id": p.project_id, "completed_steps": json.loads(p.completed_steps)}
+            for p in current_user.project_progress
+        ]
     )

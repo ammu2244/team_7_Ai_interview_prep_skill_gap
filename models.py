@@ -12,7 +12,11 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     xp = Column(Integer, default=0)
+    level = Column(Integer, default=1)
+    xp_to_next = Column(Integer, default=500)
     streak = Column(Integer, default=0)
+    earned_badges = Column(Text, default="[]")  # stored as JSON string
+    daily_xp = Column(Text, default="{}")       # stored as JSON string {"YYYY-MM-DD": xp}
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -21,6 +25,18 @@ class User(Base):
     skill_analyses = relationship("SkillAnalysis", back_populates="user")
     test_results = relationship("TestResult", back_populates="user")
     progress = relationship("Progress", back_populates="user")
+    project_progress = relationship("ProjectProgress", back_populates="user")
+
+
+class ProjectProgress(Base):
+    __tablename__ = "project_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    project_id = Column(String(255), nullable=False)
+    completed_steps = Column(Text, default="[]")  # stored as JSON string [0, 1, 2]
+
+    user = relationship("User", back_populates="project_progress")
 
 
 class Resume(Base):
@@ -79,3 +95,24 @@ class Progress(Base):
     total_progress_percentage = Column(Float, default=0.0)
 
     user = relationship("User", back_populates="progress")
+
+
+class GeneratedProject(Base):
+    __tablename__ = "generated_projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(255), nullable=False)
+    difficulty = Column(String(50), nullable=False)
+    description = Column(Text, nullable=False)
+    features = Column(Text, nullable=False)  # JSON string list
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class GeneratedRoadmap(Base):
+    __tablename__ = "generated_roadmaps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    roadmap_data = Column(Text, nullable=False)  # Full roadmap JSON blob
+    created_at = Column(DateTime, default=datetime.utcnow)

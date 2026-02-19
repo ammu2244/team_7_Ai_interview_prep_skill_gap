@@ -22,7 +22,11 @@ class UserResponse(BaseModel):
     name: str
     email: str
     xp: int
+    level: int
+    xp_to_next: int
     streak: int
+    earned_badges: str = "[]"
+    daily_xp: str = "{}"
 
     class Config:
         from_attributes = True

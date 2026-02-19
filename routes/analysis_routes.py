@@ -2,7 +2,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db import get_db
-from models import User, Resume, JobDescription, SkillAnalysis
+from models import User, Resume, JobDescription, SkillAnalysis, GeneratedProject, GeneratedRoadmap
 from schemas.job_schema import JobDescriptionRequest, JobDescriptionResponse
 from schemas.skill_schema import SkillAnalysisResponse
 from utils.jwt_handler import get_current_user
@@ -66,6 +66,11 @@ def get_skill_gap(
         match_percentage=result["match_percentage"],
     )
     db.add(analysis)
+    
+    # Clear old AI content so new ones are generated uniquely for this analysis
+    db.query(GeneratedRoadmap).filter(GeneratedRoadmap.user_id == current_user.id).delete()
+    db.query(GeneratedProject).filter(GeneratedProject.user_id == current_user.id).delete()
+    
     db.commit()
     db.refresh(analysis)
 
